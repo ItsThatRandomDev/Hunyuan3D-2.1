@@ -52,9 +52,6 @@ psutil==6.0.0
 # GPU Computing (requires CUDA)
 cupy-cuda12x==13.4.1
 
-# Blender
-bpy==4.0 --extra-index-url https://download.blender.org/pypi/
-
 # ONNX Runtime
 onnxruntime==1.16.3
 torchmetrics==1.6.0

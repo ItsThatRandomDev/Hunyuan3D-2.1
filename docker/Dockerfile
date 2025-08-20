@@ -55,12 +55,13 @@ RUN conda install cuda -c nvidia/label/cuda-12.4.1 -y
 # Update libstdcxx-ng to fix compatibility issues (auto-confirm)
 RUN conda install -c conda-forge libstdcxx-ng -y
 
+RUN pip install --upgrade pip setuptools wheel
 RUN pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 
 # Clone Hunyuan3D-2.1 repository
 RUN git clone -b fix/docker-conda-tos --single-branch https://github.com/ItsThatRandomDev/Hunyuan3D-2.1.git
 
-# Install Python dependencies from modified requirements.txt
+RUN pip install bpy==4.0 --extra-index-url https://download.blender.org/pypi/
 RUN pip install -r Hunyuan3D-2.1/requirements.txt
 
 # Install custom_rasterizer
