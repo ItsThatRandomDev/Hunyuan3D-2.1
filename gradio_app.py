@@ -282,13 +282,13 @@ def _gen_shape(
         start_time = time.time()
         for k, v in image.items():
             if check_box_rembg or v.mode == "RGB":
-                img = rmbg_worker(v.convert('RGB'))
+                img = get_rmbg_worker()(v.convert('RGB'))
                 image[k] = img
         time_meta['remove background'] = time.time() - start_time
     else:
         if check_box_rembg or image.mode == "RGB":
             start_time = time.time()
-            image = rmbg_worker(image.convert('RGB'))
+            image = get_rmbg_worker()(image.convert('RGB'))
             time_meta['remove background'] = time.time() - start_time
 
     # remove disk io to make responding faster, uncomment at your will.
@@ -299,7 +299,7 @@ def _gen_shape(
 
     generator = torch.Generator()
     generator = generator.manual_seed(int(seed))
-    outputs = i23d_worker(
+    outputs = get_i23d_worker()(
         image=image,
         num_inference_steps=steps,
         guidance_scale=guidance_scale,
@@ -378,7 +378,7 @@ def generation_all(
     tmp_time = time.time()
 
     text_path = os.path.join(save_folder, f'textured_mesh.obj')
-    path_textured = tex_pipeline(mesh_path=path, image_path=image, output_mesh_path=text_path, save_glb=False)
+    path_textured = get_tex_pipeline()(mesh_path=path, image_path=image, output_mesh_path=text_path, save_glb=False)
         
     logger.info("---Texture Generation takes %s seconds ---" % (time.time() - tmp_time))
     stats['time']['texture generation'] = time.time() - tmp_time
@@ -797,11 +797,20 @@ if __name__ == '__main__':
             #     texgen_worker.enable_model_cpu_offload()
 
             from hy3dpaint.textureGenPipeline import Hunyuan3DPaintPipeline, Hunyuan3DPaintConfig
-            conf = Hunyuan3DPaintConfig(max_num_view=8, resolution=768)
-            conf.realesrgan_ckpt_path = "hy3dpaint/ckpt/RealESRGAN_x4plus.pth"
-            conf.multiview_cfg_path = "hy3dpaint/cfgs/hunyuan-paint-pbr.yaml"
-            conf.custom_pipeline = "hy3dpaint/hunyuanpaintpbr"
-            tex_pipeline = Hunyuan3DPaintPipeline(conf)
+            
+            # Initialize texture pipeline as None for lazy loading
+            tex_pipeline = None
+            
+            def get_tex_pipeline():
+                global tex_pipeline
+                if tex_pipeline is None:
+                    print("Loading texture generation pipeline...")
+                    conf = Hunyuan3DPaintConfig(max_num_view=8, resolution=768)
+                    conf.realesrgan_ckpt_path = "hy3dpaint/ckpt/RealESRGAN_x4plus.pth"
+                    conf.multiview_cfg_path = "hy3dpaint/cfgs/hunyuan-paint-pbr.yaml"
+                    conf.custom_pipeline = "hy3dpaint/hunyuanpaintpbr"
+                    tex_pipeline = Hunyuan3DPaintPipeline(conf)
+                return tex_pipeline
         
             # Not help much, ignore for now.
             # if args.compile:
@@ -832,18 +841,33 @@ if __name__ == '__main__':
     from hy3dshape.pipelines import export_to_trimesh
     from hy3dshape.rembg import BackgroundRemover
 
-    rmbg_worker = BackgroundRemover()
-    i23d_worker = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
-        args.model_path,
-        subfolder=args.subfolder,
-        use_safetensors=False,
-        device=args.device,
-    )
-    if args.enable_flashvdm:
-        mc_algo = 'mc' if args.device in ['cpu', 'mps'] else args.mc_algo
-        i23d_worker.enable_flashvdm(mc_algo=mc_algo)
-    if args.compile:
-        i23d_worker.compile()
+    # Initialize workers as None for lazy loading to prevent OOM at startup
+    rmbg_worker = None
+    i23d_worker = None
+    
+    def get_rmbg_worker():
+        global rmbg_worker
+        if rmbg_worker is None:
+            print("Loading background removal model...")
+            rmbg_worker = BackgroundRemover()
+        return rmbg_worker
+    
+    def get_i23d_worker():
+        global i23d_worker
+        if i23d_worker is None:
+            print("Loading main 3D generation model...")
+            i23d_worker = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
+                args.model_path,
+                subfolder=args.subfolder,
+                use_safetensors=False,
+                device=args.device,
+            )
+            if args.enable_flashvdm:
+                mc_algo = 'mc' if args.device in ['cpu', 'mps'] else args.mc_algo
+                i23d_worker.enable_flashvdm(mc_algo=mc_algo)
+            if args.compile:
+                i23d_worker.compile()
+        return i23d_worker
 
     floater_remove_worker = FloaterRemover()
     degenerate_face_remove_worker = DegenerateFaceRemover()
@@ -853,14 +877,53 @@ if __name__ == '__main__':
     # create a FastAPI app
     app = FastAPI()
     
+    @app.get("/health")
+    def health_check():
+        """Health check endpoint for Fly.io load balancer"""
+        try:
+            # Quick check that critical components are loaded
+            import torch
+            return {"status": "ok", "gpu_available": torch.cuda.is_available()}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+    
+    @app.get("/ready")
+    def readiness_check():
+        """More comprehensive readiness check"""
+        try:
+            # Check if models are loaded
+            model_status = {
+                "rmbg_worker": rmbg_worker is not None,
+                "i23d_worker": i23d_worker is not None,
+                "face_reduce_worker": face_reduce_worker is not None,
+                "startup": "ready"
+            }
+            if HAS_TEXTUREGEN:
+                model_status["tex_pipeline"] = tex_pipeline is not None
+            
+            all_ready = all(model_status.values())
+            return {
+                "status": "ready" if all_ready else "loading",
+                "models": model_status,
+                "gpu_available": torch.cuda.is_available()
+            }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
     # create a static directory to store the static files
     static_dir = Path(SAVE_DIR).absolute()
     static_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/static", StaticFiles(directory=static_dir, html=True), name="static")
     shutil.copytree('./assets/env_maps', os.path.join(static_dir, 'env_maps'), dirs_exist_ok=True)
+    
+    # Health check endpoint for Fly.io
+    @app.get("/health")
+    async def health_check():
+        return {"status": "ok", "message": "Hunyuan3D is running"}
 
     if args.low_vram_mode:
         torch.cuda.empty_cache()
     demo = build_app()
+    port = int(os.environ.get("PORT", 8080))  # fallback for local dev
+    print(f"Starting app on 0.0.0.0:{port}")
     app = gr.mount_gradio_app(app, demo, path="/")
-    uvicorn.run(app, host=args.host, port=args.port)
+    uvicorn.run(app, host="0.0.0.0", port=port)

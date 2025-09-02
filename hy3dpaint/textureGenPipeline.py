@@ -25,7 +25,18 @@ from utils.multiview_utils import multiviewDiffusionNet
 from utils.pipeline_utils import ViewProcessor
 from utils.image_super_utils import imageSuperNet
 from utils.uvwrap_utils import mesh_uv_wrap
-from DifferentiableRenderer.mesh_utils import convert_obj_to_glb
+
+# Optional import for GLB conversion - requires bpy (Blender Python)
+try:
+    from DifferentiableRenderer.mesh_utils import convert_obj_to_glb
+    HAS_BLENDER = True
+except ImportError:
+    print("Warning: Blender Python (bpy) not available. GLB export will be disabled.")
+    HAS_BLENDER = False
+    def convert_obj_to_glb(*args, **kwargs):
+        print("GLB conversion not available (requires Blender Python). Skipping GLB export.")
+        return None
+
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -186,7 +197,10 @@ class Hunyuan3DPaintPipeline:
         self.render.save_mesh(output_mesh_path, downsample=True)
 
         if save_glb:
-            convert_obj_to_glb(output_mesh_path, output_mesh_path.replace(".obj", ".glb"))
-            output_glb_path = output_mesh_path.replace(".obj", ".glb")
+            if HAS_BLENDER:
+                convert_obj_to_glb(output_mesh_path, output_mesh_path.replace(".obj", ".glb"))
+                output_glb_path = output_mesh_path.replace(".obj", ".glb")
+            else:
+                print("Warning: GLB export requested but Blender Python not available. Only OBJ file saved.")
 
         return output_mesh_path

@@ -1,0 +1,46 @@
+app = "hunyuan3d21"
+primary_region = "iad"
+
+[build]
+
+[http_service]
+force_https = true
+auto_stop_machines = "suspend" 
+auto_start_machines = true
+min_machines_running = 0
+processes = ["app"]
+internal_port = 8080  # Add this line
+
+[[http_service.checks]]
+interval = "60s"
+timeout = "30s"  # Longer timeout for heavy ML app
+grace_period = "60s"  # More time for startup
+method = "GET"
+path = "/health"
+
+[[vm]]
+memory = '32gb'
+cpu_kind = 'performance'
+cpus = 8
+
+[mounts]
+source = "hunyuan3d_data"
+destination = "/data"
+initial_size = "100gb"
+
+[env]
+HUGGINGFACE_HUB_CACHE = "/data/hf"
+TRANSFORMERS_CACHE = "/data/hf" 
+HF_HOME = "/data/hf"
+TORCH_HOME = "/data/torch"
+XDG_CACHE_HOME = "/data/.cache"
+PIP_CACHE_DIR = "/data/pip-cache"
+PYTHONPATH = "/data/python-packages"
+HY3DGEN_CACHE = "/data/hy3dgen"
+PORT = "8080"
+PYTHONDONTWRITEBYTECODE = "1"
+PYTHONUNBUFFERED = "1"
+PYTORCH_CUDA_ALLOC_CONF = "max_split_size_mb:512"
+CUDA_LAUNCH_BLOCKING = "0"
+# Optional: Set these if you want to pre-download models
+# HUNYUAN_REPOS = "tencent/Hunyuan3D-2.1"

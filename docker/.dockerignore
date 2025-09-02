@@ -1,0 +1,68 @@
+# Git and version control
+.git
+.gitignore
+.github
+
+# Documentation and examples
+*.md
+README*
+docs/
+examples/
+tests/
+.pytest_cache
+
+# Python cache and artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Model checkpoints and large files (will be mounted)
+*.ckpt
+*.safetensors
+*.bin
+models/
+checkpoints/
+weights/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

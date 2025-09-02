@@ -14,11 +14,19 @@
 
 import os
 import cv2
-import bpy
 import math
 import numpy as np
 from io import StringIO
 from typing import Optional, Tuple, Dict, Any
+
+# Optional import for bpy - Blender functionality
+try:
+    import bpy
+    HAS_BLENDER = True
+except ImportError:
+    print("Warning: Blender Python (bpy) not available in mesh_utils. GLB conversion disabled.")
+    bpy = None
+    HAS_BLENDER = False
 
 
 def _safe_extract_attribute(obj: Any, attr_path: str, default: Any = None) -> Any:
@@ -265,6 +273,10 @@ def convert_obj_to_glb(
     merge_vertices: bool = False,
 ) -> bool:
     """Convert OBJ file to GLB format using Blender."""
+    if not HAS_BLENDER:
+        print(f"Warning: GLB conversion skipped - Blender not available. Input: {obj_path}")
+        return False
+    
     try:
         _setup_blender_scene()
         _clear_scene_objects()
