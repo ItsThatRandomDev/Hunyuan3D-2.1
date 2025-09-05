@@ -915,10 +915,6 @@ if __name__ == '__main__':
     app.mount("/static", StaticFiles(directory=static_dir, html=True), name="static")
     shutil.copytree('./assets/env_maps', os.path.join(static_dir, 'env_maps'), dirs_exist_ok=True)
     
-    # Health check endpoint for Fly.io
-    @app.get("/health")
-    async def health_check():
-        return {"status": "ok", "message": "Hunyuan3D is running"}
 
     if args.low_vram_mode:
         torch.cuda.empty_cache()
