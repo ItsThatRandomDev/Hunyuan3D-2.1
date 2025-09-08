@@ -1,5 +1,5 @@
 app = "hunyuan3d21"
-primary_region = "iad"
+primary_region = "ord"
 
 [build]
 
