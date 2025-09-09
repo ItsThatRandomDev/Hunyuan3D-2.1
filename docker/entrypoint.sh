@@ -4,7 +4,7 @@ set -euo pipefail
 echo "Starting Hunyuan3D-2.1 deployment..."
 
 # Optional: pass space-separated repo IDs via env so you can change without rebuilds
-: "${HUNYUAN_REPOS:=}"  # e.g. "Tencent/Hunyuan3D-2.1 Tencent/Hunyuan3D-Shape-v2-1 Tencent/Hunyuan3D-Paint-v2-1"
+: "${HUNYUAN_REPOS:=tencent/Hunyuan3D-2.1}"  # Default to main repo for texture generation
 : "${HF_TOKEN:=}"
 : "${PORT:=8080}"
 
@@ -53,11 +53,35 @@ for r in repos:
     if not os.path.exists(dest) or not os.listdir(dest):
         print(f"Downloading {r} -> {dest}")
         try:
-            snapshot_download(repo_id=r, local_dir=dest, local_dir_use_symlinks=False, token=token)
+            # For Hunyuan3D-2.1, download the paint models specifically
+            if "Hunyuan3D-2.1" in r:
+                snapshot_download(
+                    repo_id=r, 
+                    local_dir=dest, 
+                    local_dir_use_symlinks=False, 
+                    token=token,
+                    allow_patterns=["hunyuan3d-paintpbr-v2-1/*"]
+                )
+            else:
+                snapshot_download(repo_id=r, local_dir=dest, local_dir_use_symlinks=False, token=token)
         except Exception as e:
             print(f"Failed to download {r}: {e}")
     else:
         print(f"Already present: {r}")
+        
+# Create HuggingFace cache symlinks for model discovery
+hf_cache = "/data/hf/hub"
+os.makedirs(hf_cache, exist_ok=True)
+for r in repos:
+    model_name = f"models--{r.replace('/', '--')}"
+    cache_path = os.path.join(hf_cache, model_name)
+    source_path = os.path.join(base, r.replace("/", "__"))
+    if os.path.exists(source_path) and not os.path.exists(cache_path):
+        try:
+            os.symlink(source_path, cache_path)
+            print(f"Created cache symlink: {cache_path}")
+        except Exception as e:
+            print(f"Failed to create symlink for {r}: {e}")
 PY
   ) &
 fi
@@ -136,7 +160,7 @@ if [ "$deps_working" != "true" ]; then
     pip install trimesh pygltflib --cache-dir /data/pip-cache --target $PIP_TARGET || true
     pip install numpy opencv-python --cache-dir /data/pip-cache --target $PIP_TARGET || true
     pip install einops scikit-image --cache-dir /data/pip-cache --target $PIP_TARGET || true
-    pip install pymeshlab omegaconf tqdm --cache-dir /data/pip-cache --target $PIP_TARGET || true
+    pip install pymeshlab==2023.12.post1 omegaconf tqdm --cache-dir /data/pip-cache --target $PIP_TARGET || true
     pip install xatlas rembg --cache-dir /data/pip-cache --target $PIP_TARGET || true
     pip install timm --cache-dir /data/pip-cache --target $PIP_TARGET || true
     # Try installing bpy through different methods
@@ -179,7 +203,7 @@ if [ "$deps_working" != "true" ]; then
     
     if ! PYTHONPATH="/data/python-packages:${PYTHONPATH:-}" python3 -c "import pymeshlab" 2>/dev/null; then
       echo "Pymeshlab missing, installing separately to persistent volume..."
-      pip install pymeshlab --cache-dir /data/pip-cache --target $PIP_TARGET || true
+      pip install pymeshlab==2023.12.post1 --cache-dir /data/pip-cache --target $PIP_TARGET || true
     fi
     
     if ! PYTHONPATH="/data/python-packages:${PYTHONPATH:-}" python3 -c "import pygltflib" 2>/dev/null; then

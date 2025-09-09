@@ -60,8 +60,8 @@ def remove_floater(mesh: pymeshlab.MeshSet):
 
 
 def pymeshlab2trimesh(mesh: pymeshlab.MeshSet):
-    with tempfile.NamedTemporaryFile(suffix='.ply', delete=False) as temp_file:
-        mesh.save_current_mesh(temp_file.name)
+    with tempfile.NamedTemporaryFile(suffix='.obj', delete=False) as temp_file:
+        mesh.save_current_mesh(temp_file.name, file_format="obj")
         mesh = trimesh.load(temp_file.name)
     # 检查加载的对象类型
     if isinstance(mesh, trimesh.Scene):
@@ -74,7 +74,7 @@ def pymeshlab2trimesh(mesh: pymeshlab.MeshSet):
 
 
 def trimesh2pymeshlab(mesh: trimesh.Trimesh):
-    with tempfile.NamedTemporaryFile(suffix='.ply', delete=False) as temp_file:
+    with tempfile.NamedTemporaryFile(suffix='.obj', delete=False) as temp_file:
         if isinstance(mesh, trimesh.scene.Scene):
             for idx, obj in enumerate(mesh.geometry.values()):
                 if idx == 0:
@@ -82,10 +82,11 @@ def trimesh2pymeshlab(mesh: trimesh.Trimesh):
                 else:
                     temp_mesh = temp_mesh + obj
             mesh = temp_mesh
-        mesh.export(temp_file.name)
-        mesh = pymeshlab.MeshSet()
-        mesh.load_new_mesh(temp_file.name)
-    return mesh
+        # export as OBJ instead of PLY
+        mesh.export(temp_file.name, file_type="obj")
+        ms = pymeshlab.MeshSet()
+        ms.load_new_mesh(temp_file.name)
+    return ms
 
 
 def export_mesh(input, output):
