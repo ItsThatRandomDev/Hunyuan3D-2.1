@@ -149,7 +149,7 @@ class DegenerateFaceRemover:
     ) -> Union[pymeshlab.MeshSet, trimesh.Trimesh, Latent2MeshOutput]:
         ms = import_mesh(mesh)
 
-        with tempfile.NamedTemporaryFile(suffix='.ply', delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(suffix='.obj', delete=False) as temp_file:
             ms.save_current_mesh(temp_file.name)
             ms = pymeshlab.MeshSet()
             ms.load_new_mesh(temp_file.name)
