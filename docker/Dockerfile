@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 WORKDIR /workspace
-RUN git clone -b flymachine --single-branch --depth 1 https://github.com/ItsThatRandomDev/Hunyuan3D-2.1.git
+RUN git clone -b flyio --single-branch --depth 1 https://github.com/ItsThatRandomDev/Hunyuan3D-2.1.git
 WORKDIR /workspace/Hunyuan3D-2.1
 
 # Install only what's needed to build wheels
