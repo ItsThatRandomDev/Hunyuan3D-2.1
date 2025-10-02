@@ -61,7 +61,7 @@ def remove_floater(mesh: pymeshlab.MeshSet):
 
 def pymeshlab2trimesh(mesh: pymeshlab.MeshSet):
     with tempfile.NamedTemporaryFile(suffix='.obj', delete=False) as temp_file:
-        mesh.save_current_mesh(temp_file.name, file_format="obj")
+        mesh.save_current_mesh(temp_file.name)
         mesh = trimesh.load(temp_file.name)
     # 检查加载的对象类型
     if isinstance(mesh, trimesh.Scene):

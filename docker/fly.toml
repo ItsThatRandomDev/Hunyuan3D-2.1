@@ -22,6 +22,7 @@ path = "/health"
 memory = '32gb'
 cpu_kind = 'performance'
 cpus = 8
+gpu_kind = "l40s"
 
 [mounts]
 source = "hunyuan3d_data"

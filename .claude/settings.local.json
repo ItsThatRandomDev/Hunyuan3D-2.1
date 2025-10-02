@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Read(//tmp/**)",
+      "Bash(python:*)",
+      "Bash(env)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
